@@ -1,0 +1,16 @@
+[package]
+name = "agb_example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[profile.dev]
+opt-level = 3
+debug = true
+
+[profile.release]
+lto = true
+
+[dependencies]
+agb = "0.21.3"
+gba_rumble = {path = "../../gba_rumble"}

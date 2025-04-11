@@ -1,0 +1,17 @@
+[package]
+name = "gba_example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[profile.dev]
+opt-level = 3
+debug = true
+
+[profile.release]
+lto = true
+
+[dependencies]
+gba = "0.14.1"
+gba_rumble = {path = "../../gba_rumble"}
+mgba_log = "0.2.1"
