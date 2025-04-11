@@ -61,15 +61,13 @@ fn wait_for_vblank() {
     };
 }
 
-/// Perform a soft reset on the GBA.
+/// Reset VRAM.
 ///
-/// This resets the entire system, although it does not clear `.noinit` data in EWRAM. This means
-/// that the current testing context and previous results will persist through this reset.
+/// This resets both VRAM and palette data. It is called after detecting the Game Boy Player.
 #[inline]
 #[instruction_set(arm::t32)]
 fn reset_vram() {
     unsafe {
-        // Resets everything besides EWRAM and IWRAM.
         asm! {
             "swi #0x01",
             in("r0") 12,
