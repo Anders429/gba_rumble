@@ -33,8 +33,6 @@ version = "0.1.0"
 dependencies = [
  "agb",
  "gba_rumble",
- "log",
- "mgba_log",
 ]
 
 [[package]]
@@ -258,7 +256,6 @@ name = "gba_rumble"
 version = "0.1.0"
 dependencies = [
  "deranged",
- "log",
 ]
 
 [[package]]
@@ -305,15 +302,6 @@ name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
-
-[[package]]
-name = "mgba_log"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7079c1b3ad4a964b0a18fd7767357527952c9c62ed70b3fa909af813dfb347c"
-dependencies = [
- "log",
-]
 
 [[package]]
 name = "miniz_oxide"

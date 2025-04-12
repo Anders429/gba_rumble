@@ -44,7 +44,6 @@ version = "0.1.0"
 dependencies = [
  "gba",
  "gba_rumble",
- "log",
  "mgba_log",
 ]
 
@@ -53,7 +52,6 @@ name = "gba_rumble"
 version = "0.1.0"
 dependencies = [
  "deranged",
- "log",
 ]
 
 [[package]]
