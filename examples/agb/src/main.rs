@@ -24,7 +24,7 @@ fn main(mut gba: Gba) -> ! {
     };
     let vblank = VBlank::get();
     unsafe {
-        RCNT.write(0);
+        RCNT.write_volatile(0);
         SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
     }
     let mut button_controller = ButtonController::new();

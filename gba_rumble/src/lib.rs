@@ -82,7 +82,7 @@ enum GameBoyPlayerRumble {
     Start = 0x4000_0026,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum GameBoyPlayerSioState {
     Handshake { index: RangedUsize<0, 3> },
     Magic { index: RangedUsize<1, 3> },
@@ -116,6 +116,7 @@ impl GameBoyPlayerSioState {
 /// Handles SIO interrupts for every stage of the Game Boy Player communication process.
 ///
 /// This function should be called within an interrupt handler when the SIO interrupt is triggered.
+#[unsafe(link_section = ".iwram")]
 pub fn game_boy_player_interrupt() {
     let input = unsafe { SIODATA.read_volatile() };
 
@@ -277,12 +278,23 @@ pub fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::GameBoyPlayerRumble;
+    #![allow(static_mut_refs)]
 
     use super::{GAME_BOY_PLAYER_RUMBLE, GameBoyPlayer};
+    use crate::{
+        GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerRumble, GameBoyPlayerSioState, SIODATA,
+        game_boy_player_interrupt,
+    };
     use alloc::format;
     use claims::{assert_matches, assert_none, assert_some_eq};
+    use deranged::RangedUsize;
     use gba_test::test;
+
+    const DISPSTAT: *mut u16 = 0x0400_0004 as *mut u16;
+    const IME: *mut bool = 0x0400_0208 as *mut bool;
+    const IE: *mut u16 = 0x0400_0200 as *mut u16;
+    const RCNT: *mut u16 = 0x0400_0134 as *mut u16;
+    const SIOCNT: *mut u16 = 0x0400_0128 as *mut u16;
 
     #[test]
     fn game_boy_player_debug() {
@@ -298,6 +310,11 @@ mod tests {
         ignore = "This test should be run on a Game Boy Player (or emulator with Game Boy Player functionality). Pass `--cfg game_boy_player` to enable."
     )]
     fn game_boy_player_detect_successful() {
+        unsafe {
+            DISPSTAT.write_volatile(8);
+            IE.write_volatile(1);
+            IME.write(true);
+        }
         assert_some_eq!(GameBoyPlayer::detect(), GameBoyPlayer { private: () });
     }
 
@@ -307,6 +324,11 @@ mod tests {
         ignore = "This test should be run on a console that is not a Game Boy Player (or emulator with Game Boy Player functionality disabled). Omit `--cfg game_boy_player` to enable."
     )]
     fn game_boy_player_detect_failure() {
+        unsafe {
+            DISPSTAT.write_volatile(8);
+            IE.write_volatile(1);
+            IME.write(true);
+        }
         assert_none!(GameBoyPlayer::detect());
     }
 
@@ -341,5 +363,532 @@ mod tests {
             unsafe { GAME_BOY_PLAYER_RUMBLE },
             GameBoyPlayerRumble::HardStop
         );
+    }
+
+    #[test]
+    fn game_boy_player_sio_state_get_handshake_key() {
+        assert_eq!(
+            GameBoyPlayerSioState::get_handshake_key(RangedUsize::new_static::<0>()),
+            0x494e
+        );
+        assert_eq!(
+            GameBoyPlayerSioState::get_handshake_key(RangedUsize::new_static::<1>()),
+            0x544e
+        );
+        assert_eq!(
+            GameBoyPlayerSioState::get_handshake_key(RangedUsize::new_static::<2>()),
+            0x4e45
+        );
+        assert_eq!(
+            GameBoyPlayerSioState::get_handshake_key(RangedUsize::new_static::<3>()),
+            0x4f44
+        );
+    }
+
+    #[test]
+    fn game_boy_player_sio_state_get_magic_values() {
+        assert_eq!(
+            GameBoyPlayerSioState::get_magic_values(RangedUsize::new_static::<1>()),
+            (0xB0BB8002, 0x10000010)
+        );
+        assert_eq!(
+            GameBoyPlayerSioState::get_magic_values(RangedUsize::new_static::<2>()),
+            (0x10000010, 0x20000013)
+        );
+        assert_eq!(
+            GameBoyPlayerSioState::get_magic_values(RangedUsize::new_static::<3>()),
+            (0x20000013, 0x40000004)
+        );
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_partial_match_0() {
+        unsafe {
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x0000494E);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x494EB6B1);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_partial_match_1() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<1>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB6B1544E);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x544EABB1);
+
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<1>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_partial_match_2() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<2>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xABB14E45);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x4E45B1BA);
+
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<2>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_partial_match_3() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<3>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB1BA4F44);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x4F44B0BB);
+
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<3>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_full_match_0() {
+        unsafe {
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB6B1494E);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x544EB6B1);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<1>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_full_match_1() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<1>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xABB1544E);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x4E45ABB1);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<2>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_full_match_2() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<2>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB1BA4E45);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x4F44B1BA);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<3>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_full_match_3() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<3>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB0BB4F44);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x8000B0BB);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<1>()
+            });
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_no_match_0() {
+        unsafe {
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_no_match_1() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<1>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_no_match_2() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<2>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_handshake_no_match_3() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Handshake {
+                index: RangedUsize::new_static::<3>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_match_1() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<1>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0xB0BB8002);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x10000010);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<2>()
+            });
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_match_2() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<2>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x10000010);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x20000013);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<3>()
+            });
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_match_3() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<3>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x20000013);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x40000004);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::SendData);
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_no_match_1() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<1>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_no_match_2() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<2>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_magic_no_match_3() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<3>(),
+            };
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_send_data_start() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::SendData;
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x30000003);
+            GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::Start;
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), GameBoyPlayerRumble::Start as u32);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::SendData);
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_send_data_stop() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::SendData;
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x30000003);
+            GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::Stop;
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), GameBoyPlayerRumble::Stop as u32);
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::SendData);
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_send_data_hard_stop() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::SendData;
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x30000003);
+            GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::HardStop;
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(
+                SIODATA.read_volatile(),
+                GameBoyPlayerRumble::HardStop as u32
+            );
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::SendData);
+        }
+    }
+
+    #[test]
+    fn game_boy_player_interrupt_send_data_no_match() {
+        unsafe {
+            GAME_BOY_PLAYER_SIO_STATE = GameBoyPlayerSioState::SendData;
+            RCNT.write_volatile(0);
+            SIOCNT.write_volatile(0x4000 | 0x1000 | 8);
+            SIODATA.write_volatile(0x12345678);
+        }
+
+        game_boy_player_interrupt();
+
+        unsafe {
+            assert_eq!(SIODATA.read_volatile(), 0x12345678);
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Handshake {
+                    index: RangedUsize::new_static::<0>()
+                }
+            );
+        }
     }
 }
