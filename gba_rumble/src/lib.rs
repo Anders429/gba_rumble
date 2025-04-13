@@ -1,3 +1,29 @@
+//! Library for enabling rumble functionality on the Game Boy Advance.
+//!
+//! This crate supports rumble through both the cartridge itself using general purpose I/O (GPIO)
+//! and the Game Boy Player's rumble functionality. Functionality is provided for detecting
+//! available rumble features and using them fully.
+//!
+//! The library is designed to be usable regardless of what other GBA development libraries may be
+//! in use. It is usable with popular libraries like [`gba`](https://docs.rs/gba/latest/gba/) and
+//! [`agb`](https://docs.rs/agb/latest/agb/index.html).
+//!
+//! # Usage
+//! ## Cartridge (GPIO) Rumble
+//! To use a cartridge's built-in rumble through general purpose I/O (GPIO), use the [`Gpio`]
+//! struct. No detection logic is available, as there is no reliable way to detect GPIO rumble.
+//! Calling these functions when rumble is not available will do nothing.
+//!
+//! ``` rust
+//! let gpio = gba_rumble::Gpio;
+//!
+//! // Activate the cartridge's rumble. This will continue until `stop()` is called.
+//! gpio.start();
+//!
+//! // Deactivate the cartridge's rumble.
+//! gpio.stop();
+//! ```
+
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![cfg_attr(test, feature(custom_test_frameworks))]
@@ -581,9 +607,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x8000B0BB);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<1>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<1>()
+                }
+            );
         }
     }
 
@@ -695,9 +724,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x10000010);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<2>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<2>()
+                }
+            );
         }
     }
 
@@ -716,9 +748,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x20000013);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<3>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<3>()
+                }
+            );
         }
     }
 
