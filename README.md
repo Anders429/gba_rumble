@@ -9,7 +9,7 @@ Library for enabling rumble functionality on the Game Boy Advance.
 
 This crate supports rumble through both the cartridge itself using general purpose I/O (GPIO) and the Game Boy Player's rumble functionality. Functionality is provided for detecting available rumble features and using them fully.
 
-The library is designed to be usable regardless of what other GBA development libraries may be in use. It is usable with popular libraries like [`gba`](https://docs.rs/gba/latest/gba/) and [`agb`](https://docs.rs/agb/latest/agb/index.html).
+The library is designed to be usable regardless of what other GBA development libraries may be in use. It is usable with popular libraries like [`gba`](https://crates.io/crates/gba) and [`agb`](https://crates.io/crates/agb).
 
 ## Usage
 There are two ways to use this library: by using a cartridge's built-in rumble through [`Gpio`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.Gpio.html) and by using the Game Boy Player's rumble functionality through [`GameBoyPlayer`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.GameBoyPlayer.html).
