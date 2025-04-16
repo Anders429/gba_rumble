@@ -1,5 +1,7 @@
 # gba_rumble
 
+[![License](https://img.shields.io/crates/l/gba_rumble)](#license)
+
 Library for enabling rumble functionality on the Game Boy Advance.
 
 This crate supports rumble through both the cartridge itself using general purpose I/O (GPIO) and the Game Boy Player's rumble functionality. Functionality is provided for detecting available rumble features and using them fully.
@@ -44,3 +46,18 @@ if let Some(game_boy_player) = gba_rumble::GameBoyPlayer::detect() {
     game_boy_player.stop();
 }
 ```
+
+## License
+This project is licensed under either of
+
+* Apache License, Version 2.0
+([LICENSE-APACHE](https://github.com/Anders429/gba_rumble/blob/HEAD/LICENSE-APACHE) or
+http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license
+([LICENSE-MIT](https://github.com/Anders429/gba_rumble/blob/HEAD/LICENSE-MIT) or
+http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
