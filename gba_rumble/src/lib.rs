@@ -9,6 +9,10 @@
 //! [`agb`](https://docs.rs/agb/latest/agb/index.html).
 //!
 //! # Usage
+//! There are two ways to use this library: by using a cartridge's built-in rumble through [`Gpio`]
+//! and by using the Game Boy Player's rumble functionality through [`GameBoyPlayer`]. These two
+//! can also both be used to enable Game Boy Player rumble with cartridge rumble as a fallback.
+//!
 //! ## Cartridge (GPIO) Rumble
 //! To use a cartridge's built-in rumble through general purpose I/O (GPIO), use the [`Gpio`]
 //! struct. No detection logic is available, as there is no reliable way to detect GPIO rumble.
@@ -22,6 +26,43 @@
 //!
 //! // Deactivate the cartridge's rumble.
 //! gpio.stop();
+//! ```
+//!
+//! ## Game Boy Player
+//! To use the Game Boy Player's rubmle functionality, you must detect the Game Boy Player by
+//! calling [`GameBoyPlayer::detect()`] at the beginning of your program. If the program is being
+//! run on a Game Boy Player, a [`GameBoyPlayer`] object will be returned, through which you can
+//! start and stop rumble.
+//!
+//! Communication with the Game Boy Player is done through the serial point. This is done by
+//! calling [`game_boy_player_interrupt()`] when a serial interrupt is received. Setting this up
+//! will be specific to your own code and any frameworks you may be using; for examples using the
+//! [`gba`](https://crates.io/crates/gba) or [`agb`](https://crates.io/crates/agba) crates, see
+//! [`/examples`](https://github.com/Anders429/gba_rumble/tree/master/examples).
+//!
+//! ``` rust
+//! if let Some(game_boy_player) = gba_rumble::GameBoyPlayer::detect() {
+//!     // When a Game Boy Player is detected, you can interact with it through the returned
+//!     // `GameBoyPlayer` object.
+//!     //
+//!     // To actually use it, you must also call `game_boy_player_interrupt()` when a serial
+//!     // interrupt is received. This will be specific to your own code and any frameworks you may
+//!     // be using.
+//!
+//!     // Update the serial connection once a frame.
+//!     game_boy_player.update();
+//!     
+//!     // Activate rumble in the controller. This will continue until `stop()` or `hard_stop()`
+//!     // is called.
+//!     game_boy_player.start();
+//!
+//!     // Deactivate rumble in the controller.
+//!     game_boy_player.stop();
+//!
+//!     // You can also deactivate rumble in the controller with a hard stop. This has a different
+//!     // feel than `stop()`.
+//!     game_boy_player.hard_stop();
+//! }
 //! ```
 
 #![no_std]
@@ -142,6 +183,9 @@ impl GameBoyPlayerSioState {
 /// Handles SIO interrupts for every stage of the Game Boy Player communication process.
 ///
 /// This function should be called within an interrupt handler when the SIO interrupt is triggered.
+/// See [`/examples`](https://github.com/Anders429/gba_rumble/tree/master/examples) for examples of
+/// using this function in both the [`gba`](https://crates.io/crates/gba) or
+/// [`agb`](https://crates.io/crates/agba) crates.
 #[unsafe(link_section = ".iwram")]
 pub fn game_boy_player_interrupt() {
     let input = unsafe { SIODATA.read_volatile() };
@@ -203,12 +247,41 @@ pub fn game_boy_player_interrupt() {
     }
 }
 
+/// Game Boy Player rumble functionality.
+///
+/// # Setup
+/// To interact with the Game Boy Player's rumble, it must first be detected at the beginning of
+/// your program. This is done using the [`detect()`] function.
+///
+/// To use the Game Boy Player's rumble
+/// after it is detected, [`game_boy_player_interrupt()`] must be called when handling any serial
+/// interrupts received by the interrupt handler. The setup for this will differ depending on your
+/// code; see [`/examples`](https://github.com/Anders429/gba_rumble/tree/master/examples) for
+/// examples of using this function in both the [`gba`](https://crates.io/crates/gba) or
+/// [`agb`](https://crates.io/crates/agba) crates.
+///
+/// # Usage
+/// Once a frame, [`update()`] should be called to reset communication with the the Game Boy
+/// Player. That enables communication with the Game Boy Player through the [`start()`],
+/// [`stop()`], and [`hard_stop()`] methods.
+///
+/// [`detect()`]: GameBoyPlayer::detect()
+/// [`hard_stop()`]: GameBoyPlayer::hard_stop()
+/// [`start()`]: GameBoyPlayer::start()
+/// [`stop()`]: GameBoyPlayer::stop()
+/// [`update()`]: GameBoyPlayer::update()
 #[derive(Eq, PartialEq)]
 pub struct GameBoyPlayer {
     private: (),
 }
 
 impl GameBoyPlayer {
+    /// Detect whether the program is being run on a Game Boy Player.
+    ///
+    /// This should be called at the beginning of your program. It will display the Game Boy Player
+    /// splash screen for a few seconds and listen for inputs from the Game Boy Player itself.
+    ///
+    /// Note that you must have vblank interrupts enabled, or this function will hang forever.
     pub fn detect() -> Option<Self> {
         // Draw the Game Boy Player splash screen.
         let old_dispcnt = unsafe { DISPCNT.read_volatile() };
@@ -245,24 +318,32 @@ impl GameBoyPlayer {
         detected
     }
 
+    /// Activate rumble.
     pub fn start(&self) {
         unsafe {
             GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::Start;
         }
     }
 
+    /// Deactivate rumble.
     pub fn stop(&self) {
         unsafe {
             GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::Stop;
         }
     }
 
+    /// Deactivate rumble with a "hard" stop. This has a different feel compared to the [`stop()`] method.
+    ///
+    /// [`stop()`]: GameBoyPlayer::stop()
     pub fn hard_stop(&self) {
         unsafe {
             GAME_BOY_PLAYER_RUMBLE = GameBoyPlayerRumble::HardStop;
         }
     }
 
+    /// Reset the connection with the Game Boy Player to allow further communication.
+    ///
+    /// This should be called once a frame.
     pub fn update(&self) {
         unsafe {
             SIOCNT.write_volatile(SIOCNT.read_volatile() | (1 << 7));
@@ -276,10 +357,30 @@ impl Debug for GameBoyPlayer {
     }
 }
 
+/// Cartridge rumble functionality.
+///
+/// Communication with the cartridge's rumble motor is done through General Purpose I/O (GPIO).
+/// Specifically, this interacts using bit 3 (which is the standard pin used for rumble). Note that
+/// this may interfere with other communications done through GPIO, such as with a real-time clock
+/// device (they do not use the same bits, but they share the same address space).
+///
+/// Unlike [`GameBoyPlayer`], no setup is required to interact with GPIO rumble. Simply use an
+/// instance of `Gpio` to start and stop rumble:
+///
+/// ```rust
+/// let gpio = gba_rumble::Gpio;
+///
+/// // Activate the cartridge's rumble. This will continue until `stop()` is called.
+/// gpio.start();
+///
+/// // Deactivate the cartridge's rumble.
+/// gpio.stop();
+/// ```
 #[derive(Debug)]
 pub struct Gpio;
 
 impl Gpio {
+    /// Activate rumble.
     pub fn start(&self) {
         unsafe {
             ENABLE.write_volatile(1);
@@ -288,6 +389,7 @@ impl Gpio {
         }
     }
 
+    /// Deactivate rumble.
     pub fn stop(&self) {
         unsafe {
             DATA.write_volatile(Data::Disabled);
@@ -607,12 +709,9 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x8000B0BB);
-            assert_eq!(
-                GAME_BOY_PLAYER_SIO_STATE,
-                GameBoyPlayerSioState::Magic {
-                    index: RangedUsize::new_static::<1>()
-                }
-            );
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<1>()
+            });
         }
     }
 
@@ -724,12 +823,9 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x10000010);
-            assert_eq!(
-                GAME_BOY_PLAYER_SIO_STATE,
-                GameBoyPlayerSioState::Magic {
-                    index: RangedUsize::new_static::<2>()
-                }
-            );
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<2>()
+            });
         }
     }
 
@@ -748,12 +844,9 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x20000013);
-            assert_eq!(
-                GAME_BOY_PLAYER_SIO_STATE,
-                GameBoyPlayerSioState::Magic {
-                    index: RangedUsize::new_static::<3>()
-                }
-            );
+            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
+                index: RangedUsize::new_static::<3>()
+            });
         }
     }
 
