@@ -103,6 +103,7 @@ static mut GAME_BOY_PLAYER_SIO_STATE: GameBoyPlayerSioState = GameBoyPlayerSioSt
 #[derive(Debug)]
 #[repr(u16)]
 enum ReadWrite {
+    #[allow(dead_code)]
     Read = 0,
     Write = 8,
 }
@@ -709,9 +710,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x8000B0BB);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<1>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<1>()
+                }
+            );
         }
     }
 
@@ -823,9 +827,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x10000010);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<2>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<2>()
+                }
+            );
         }
     }
 
@@ -844,9 +851,12 @@ mod tests {
 
         unsafe {
             assert_eq!(SIODATA.read_volatile(), 0x20000013);
-            assert_eq!(GAME_BOY_PLAYER_SIO_STATE, GameBoyPlayerSioState::Magic {
-                index: RangedUsize::new_static::<3>()
-            });
+            assert_eq!(
+                GAME_BOY_PLAYER_SIO_STATE,
+                GameBoyPlayerSioState::Magic {
+                    index: RangedUsize::new_static::<3>()
+                }
+            );
         }
     }
 

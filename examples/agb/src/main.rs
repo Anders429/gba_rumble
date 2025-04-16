@@ -15,7 +15,7 @@ const RCNT: *mut u16 = 0x0400_0134 as *mut u16;
 const SIOCNT: *mut u16 = 0x0400_0128 as *mut u16;
 
 #[agb::entry]
-fn main(mut gba: Gba) -> ! {
+fn main(mut _gba: Gba) -> ! {
     let vblank = VBlank::get();
     let mut button_controller = ButtonController::new();
 
@@ -25,7 +25,7 @@ fn main(mut gba: Gba) -> ! {
         // To use the Game Boy Player's rumble when it is present, configure the interrupt handler
         // to handle incoming serial inputs using `game_boy_player_interrupt()`. The function will
         // respond with the appropriate messages through serial output.
-        let serial_interrupt = unsafe {
+        let _serial_interrupt = unsafe {
             add_interrupt_handler(Interrupt::Serial, |_| {
                 gba_rumble::game_boy_player_interrupt()
             })
