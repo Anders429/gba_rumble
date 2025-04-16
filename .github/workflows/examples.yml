@@ -1,0 +1,94 @@
+# Ensure the examples still build.
+
+name: examples
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  agb-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/agb && cargo build
+  
+  agb-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/agb && cargo check
+
+  agb-clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy, rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/agb && cargo clippy -- --deny warnings
+
+  agb-fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rustfmt
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/agb && cargo fmt -- --check
+
+  gba-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/gba && cargo build
+
+  gba-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/gba && cargo check
+
+  gba-clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy, rust-src
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/gba && cargo clippy -- --deny warnings
+
+  gba-fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rustfmt
+    - run: sudo apt-get install binutils-arm-none-eabi
+    - run: cd examples/gba && cargo fmt -- --check
