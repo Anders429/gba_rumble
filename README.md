@@ -1,5 +1,7 @@
 # gba_rumble
 
+[![crates.io](https://img.shields.io/crates/v/gba_rumble)](https://crates.io/crates/gba_rumble)
+[![docs.rs](https://docs.rs/gba_rumble/badge.svg)](https://docs.rs/gba_rumble)
 [![License](https://img.shields.io/crates/l/gba_rumble)](#license)
 
 Library for enabling rumble functionality on the Game Boy Advance.
