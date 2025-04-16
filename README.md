@@ -1,5 +1,6 @@
 # gba_rumble
 
+[![GitHub Workflow Status](https://img.shields.io/github/check-runs/Anders429/gba_rumble/master?label=tests)](https://github.com/Anders429/gba_rumble/actions?query=branch%3Amaster)
 [![crates.io](https://img.shields.io/crates/v/gba_rumble)](https://crates.io/crates/gba_rumble)
 [![docs.rs](https://docs.rs/gba_rumble/badge.svg)](https://docs.rs/gba_rumble)
 [![License](https://img.shields.io/crates/l/gba_rumble)](#license)
