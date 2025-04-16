@@ -41,8 +41,7 @@ if let Some(game_boy_player) = gba_rumble::GameBoyPlayer::detect() {
 
     // Update the serial connection once a frame.
     game_boy_player.update();
-    // Activate rumble in the controller. This will continue until `stop()` or `hard_stop()`
-    // is called.
+    // Activate rumble in the controller. This will continue until `stop()` is called.
     game_boy_player.start();
 
     // Deactivate rumble in the controller.
