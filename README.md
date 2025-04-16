@@ -12,10 +12,10 @@ This crate supports rumble through both the cartridge itself using general purpo
 The library is designed to be usable regardless of what other GBA development libraries may be in use. It is usable with popular libraries like [`gba`](https://docs.rs/gba/latest/gba/) and [`agb`](https://docs.rs/agb/latest/agb/index.html).
 
 ## Usage
-There are two ways to use this library: by using a cartridge's built-in rumble through [`Gpio`] and by using the Game Boy Player's rumble functionality through [`GameBoyPlayer`].
+There are two ways to use this library: by using a cartridge's built-in rumble through [`Gpio`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.Gpio.html) and by using the Game Boy Player's rumble functionality through [`GameBoyPlayer`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.GameBoyPlayer.html).
 
 ### Cartridge (GPIO) Rumble
-To use a cartridge's built-in rumble through general purpose I/O (GPIO), use the [`Gpio`] struct.
+To use a cartridge's built-in rumble through general purpose I/O (GPIO), use the [`Gpio`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.Gpio.html) struct.
 
 ``` rust
 let gpio = gba_rumble::Gpio;
@@ -28,7 +28,7 @@ gpio.stop();
 ```
 
 ### Game Boy Player
-To use the Game Boy Player's rubmle functionality, detect the Game Boy Player by calling [`GameBoyPlayer::detect()`] at the beginning of your program.
+To use the Game Boy Player's rubmle functionality, detect the Game Boy Player by calling [`GameBoyPlayer::detect()`](https://docs.rs/gba_rumble/latest/gba_rumble/struct.GameBoyPlayer.html#method.detect) at the beginning of your program.
 
 ``` rust
 if let Some(game_boy_player) = gba_rumble::GameBoyPlayer::detect() {    
