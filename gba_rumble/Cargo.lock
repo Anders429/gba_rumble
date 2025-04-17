@@ -16,7 +16,7 @@ checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
 
 [[package]]
 name = "gba_rumble"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "claims",
  "deranged",

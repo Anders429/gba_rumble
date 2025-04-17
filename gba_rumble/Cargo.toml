@@ -1,6 +1,6 @@
 [package]
 name = "gba_rumble"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Anders Evensen"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -9,6 +9,9 @@ repository = "https://github.com/Anders429/gba_rumble"
 description = "Rumble functionality on the Game Boy Advance."
 categories = ["game-development", "no-std", "no-std::no-alloc"]
 keywords = ["gba", "agb", "rumble", "controller", "vibration"]
+
+[package.metadata.docs.rs]
+targets = ["armv5te-unknown-linux-gnueabi"]
 
 [profile.dev]
 opt-level = 3
