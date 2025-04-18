@@ -16,7 +16,7 @@ checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
 
 [[package]]
 name = "gba_rumble"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "claims",
  "deranged",
@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "gba_test"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea1089636b7bca8e2a5c44e6716512ce4ed8218a38c816e6359e6fb72be238b3"
+checksum = "34cf6650e854040138e30116e4bf2aedcb0ac975e61fbfcc3914073b6cfb0c92"
 dependencies = [
  "gba_test_macros",
  "log",

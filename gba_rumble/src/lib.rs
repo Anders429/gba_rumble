@@ -271,7 +271,7 @@ pub fn game_boy_player_interrupt() {
 /// [`start()`]: GameBoyPlayer::start()
 /// [`stop()`]: GameBoyPlayer::stop()
 /// [`update()`]: GameBoyPlayer::update()
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct GameBoyPlayer {
     private: (),
 }
@@ -377,7 +377,7 @@ impl Debug for GameBoyPlayer {
 /// // Deactivate the cartridge's rumble.
 /// gpio.stop();
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Gpio;
 
 impl Gpio {
